@@ -34,6 +34,14 @@ def record_receipt(db, package_id, evidence):
     return Receipt(cursor.lastrowid, package_id, evidence.partition, revisions, inventory_ids, delta_ids)
 
 
+def record_merge_receipt(db, package_id, partition):
+    """Record a merge receipt whose selection is a base package, not local evidence."""
+    scope = encode_json((('merged',), (), ()))
+    cursor = db.execute('INSERT INTO receipts (package_id, partition, scope) VALUES (?, ?, ?)',
+                        (package_id, partition, scope))
+    return Receipt(cursor.lastrowid, package_id, partition, ('merged',), (), ())
+
+
 def get_receipt(db, package_id):
     _require_package_id(package_id)
     row = db.execute('''

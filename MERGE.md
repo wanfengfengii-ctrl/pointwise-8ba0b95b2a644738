@@ -10,6 +10,8 @@
 
 成功返回现有 `publication.receipts.Receipt`。`partition` 为基件分区，`revisions` 为 `('merged',)`，`inventory_ids` 和 `delta_ids` 为空元组，因为本次选件来自一个已签发基件。沿用现有签发目录和 `fetch`、`get_receipt`。包和回执同次提交。SQLite 签发异常报 `storage.StorageError`，包和回执一起回滚。
 
+基件为 V2 时按非 V1 基件拒签；基版须在基件声明的修订内。基件证据无法解出该版完整行账，同样拒签。
+
 ## V2 交换件
 
 V2 是 UTF-8 JSON 字节。共有字段为 `version`、`partition`、`base_package_id`、`base_revision`、`base_rows`、`left`、`right`、`order`。`version` 为 JSON 整数 `2`。基件号为从 1 到 2⁶³−1 的整数，分区和基版为非空 UTF-8 文本。`base_rows` 是固定基版的完整行账，采用 V1 盘点行格式。`order` 是实际签发的操作号数组。全件采用 V1 的文本、精确整数和 JSON 对象键唯一规则。
@@ -18,6 +20,8 @@ V2 是 UTF-8 JSON 字节。共有字段为 `version`、`partition`、`base_packa
 
 - 内联布局只含共有字段。`left` 和 `right` 分别为 `[操作号, 差额行数组]` 的有序数组。两侧同号内容须在规范化后相同。
 - 引用布局另含 `operations` 对象，键为操作号，值为该操作的差额行数组。`left` 和 `right` 是有序操作号数组。`operations` 的键集合必须恰等于两侧引用的并集。
+
+本实现选定**内联布局**（`publication/merge.py`）。签发与接纳都只接受内联布局；出现 `operations` 字段、或 `left`/`right` 为操作号数组时按字段和形状检查拒收。
 
 两种布局都须保全两条记录的操作身份、原序和规范化差额，以及独立的实际执行顺序。基件号和基版记录白班所选来源，基账随件交付。夜班凭件内的基账验证合流，源库和单独的 V1 基件均可不在场。
 
@@ -37,3 +41,21 @@ V2 是 UTF-8 JSON 字节。共有字段为 `version`、`partition`、`base_packa
 - `opposite_shared_order` 的共有操作在两侧顺序相反。`different_shared_delta` 的同号操作规范化后仍有不同差额。两例均拒签。
 
 保留 README.md 中的原回归和原演示。实现前可用 `python3 -B merge_examples.py fixtures` 核对样例基件。实现后沿 `.pointwise-runtime.json` 将 `python3 -B merge_examples.py verify` 接入核验，将 `python3 -B merge_examples.py demo` 接入演示。核验覆盖拒签、损坏凭据拒收、包及回执的共同提交和断源重开。核验失败须以非零状态退出。在本文记录所选交换布局、执行状态代表的截面及签发和接纳共同维护的正确性条件。
+
+## 实现说明
+
+**交换布局**：内联布局，见上文。
+
+**执行状态**：`find_execution` 把进度记成 `(i, j)`——左记录前 `i` 笔、右记录前 `j` 笔已执行。该状态的账是基账加上左右两个前缀操作号并集的差额，与到达路径无关；因此每笔整笔应用后出现负重数即可直接剪掉该状态。合法终态为 `(len(left), len(right))`，其回溯路径即签发的实际顺序。共有操作号只在两侧行进度同时匹配时推进一步，保证只执行一次。存在性判定与穷举置换一致（见测试与随机对拍）。
+
+**截面**：签发把 `order` 冻结为本次实际执行序列；`base_rows` 是基版冻结时刻的完整行账。接纳时按件内 `base_rows` 与 `left`/`right` 重放 `order`，每笔后重数须非负；`recover(..., 'merged')` 输出重放终账并按行键升序、去掉零项。
+
+**共同维护的正确性条件**（签发与接纳一致）：
+
+1. 共有操作号规范化差额相同，且 `order` 中每个操作号恰好出现一次、覆盖左右并集。
+2. `order` 分别投影到左右记录得到各自原序。
+3. 逐笔整笔应用、每笔后所有完整行重数非负。
+4. `base_package_id` 为 1..2⁶³−1 的整数且指向 V1 基件；`base_revision` 为该件声明修订；`base_rows` 即该版完整行账。
+5. V1 的文本、精确整数与唯一键规则沿用。
+
+**运行清单**：`verify` 为 `python3 -B verify.py`，依次跑原回归与 `merge_examples.py verify`；`demo` 为 `python3 -B demo_all.py`，依次跑 `demo.py` 与 `merge_examples.py demo`。任一子命令非零即整体非零。

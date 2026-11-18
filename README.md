@@ -18,11 +18,11 @@
 在仓库根目录使用 Python 3.11。项目只依赖标准库。
 
 ```sh
-python3 -B -m unittest discover -s tests -t . -v
-python3 -B demo.py
+python3 -B verify.py        # 原回归 + merge_examples.py verify
+python3 -B demo_all.py      # demo.py + merge_examples.py demo
 ```
 
-演示在独立临时库完成真实签发、关闭来源、离线接纳和核账重开。每条 `POINTWISE_SCENARIO` 记录含手算预期及实际下游结果。测试也使用各自的临时库。`examples/foreign-v1.json` 是独立编写的外站原件。
+演示在独立临时库完成真实签发、关闭来源、离线接纳和核账重开。每条 `POINTWISE_SCENARIO` 记录含手算预期及实际下游结果。测试也使用各自的临时库。`examples/foreign-v1.json` 是独立编写的外站原件。双班更正合流的接口、交换件与核验见 `MERGE.md`。
 
 ## Python 接口
 
@@ -35,6 +35,7 @@ python3 -B demo.py
 | `revisions.register.register_revision` | `(db, partition, revision)` 返回声明修订号。 |
 | `revisions.import_delta.accept_delta` | `(db, partition, delta_id, source, target, rows)` 返回差额号。`revisions.registry.get_delta(db, partition, delta_id)` 读原差额。 |
 | `publication.commit.publish` | `(db, partition, revision_ids, inventory_ids, delta_ids)` 返回 `Receipt`，含 `receipt_id`、`package_id`、分区、修订及两类选件编号。每类选择内的编号唯一。 |
+| `publication.commit.publish_merge` | `(db, base_package_id, base_revision, left, right)` 返回 `Receipt`。从已签发 V1 基件取指定修订的完整行账，合并两条 `(operation_id, rows)` 记录，见 MERGE.md。 |
 | `publication.receipts.fetch` | `(db, package_id)` 返回固定包字节。`publication.receipts.get_receipt(db, package_id)` 返回已存回执。 |
 | `audit.store.initialize_offline` | `(db)` 初始化离线目录及核账存储。 |
 | `offline.accept.import_package` | `(db, blob)` 返回本地离线包号。相同原字节重接返回原离线号。 |

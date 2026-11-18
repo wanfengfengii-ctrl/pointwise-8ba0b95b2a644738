@@ -3,7 +3,8 @@ from collections import defaultdict, deque
 from inventory.rows import add_row_changes
 from offline.catalog import get_received_package
 from offline.render import render_rows
-from publication.package import PackageEvidence, decode_package
+from publication.merge import MERGED_REVISION, MergeDocument, decode_exchange, merged_rows
+from publication.package import PackageEvidence
 from storage import EvidenceError, NotFoundError, require_text
 
 
@@ -41,6 +42,19 @@ def recover_revision_rows(evidence: PackageEvidence, revision):
     raise EvidenceError(f'revision {revision!r} has no inventory in this package')
 
 
+def recover_merge_rows(document: MergeDocument, revision):
+    """Return the merged rows; ``merged`` is the only result revision of a V2 package."""
+    require_text(revision, 'revision')
+    if revision != MERGED_REVISION:
+        raise NotFoundError(f'revision {revision!r} is not declared in this package')
+    counts = merged_rows(document)
+    if any(count < 0 for count in counts.values()):
+        raise EvidenceError('merged ledger has a negative row count')
+    return render_rows(counts)
+
+
 def recover(db, package_id, revision):
-    blob = get_received_package(db, package_id)
-    return recover_revision_rows(decode_package(blob), revision)
+    evidence = decode_exchange(get_received_package(db, package_id))
+    if isinstance(evidence, MergeDocument):
+        return recover_merge_rows(evidence, revision)
+    return recover_revision_rows(evidence, revision)
