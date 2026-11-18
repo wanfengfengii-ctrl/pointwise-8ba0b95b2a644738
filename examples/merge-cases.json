@@ -1,0 +1,42 @@
+{
+  "net_is_not_enough": {
+    "base_revision": "A",
+    "base_rows": [["ridge", "06:00", "G", 1], ["ridge", "07:00", "H", 1]],
+    "left": [["l1", [["ridge", "06:00", "G", -1]]], ["l2", [["ridge", "07:00", "H", -1], ["ridge", "06:00", "G", 1]]]],
+    "right": [["r1", [["ridge", "07:00", "H", -1]]], ["r2", [["ridge", "06:00", "G", -1], ["ridge", "07:00", "H", 1]]]]
+  },
+  "backtrack": {
+    "base_revision": "B",
+    "anchor_rows": [["ridge", "06:00", "G", 2]],
+    "reverse_delta": [["ridge", "06:00", "G", 1]],
+    "base_rows": [["ridge", "06:00", "G", 1]],
+    "left": [["a", [["ridge", "06:00", "G", -1]]]],
+    "right": [["b", [["ridge", "06:00", "G", -1]]], ["c", [["ridge", "06:00", "G", 2]]]],
+    "order": ["b", "c", "a"],
+    "merged_rows": [["ridge", "06:00", "G", 1]],
+    "actual": {"G": 1},
+    "explanation": "逆向取到的 B 基账有一条 G。先做 a 后 b 无行可删，唯一合法顺序 b、c、a 的余额依次为 0、2、1。"
+  },
+  "shared": {
+    "base_revision": "A",
+    "base_rows": [],
+    "left": [["a", [["ridge", "06:00", "G", 1]]], ["s", [["ridge", "06:00", "G", -2], ["ridge", "06:00", "G", 1]]]],
+    "right": [["s", [["ridge", "06:00", "G", -1]]], ["b", [["ridge", "06:00", "G", 2]]]],
+    "order": ["a", "s", "b"],
+    "merged_rows": [["ridge", "06:00", "G", 2]],
+    "actual": {"G": 2},
+    "explanation": "两侧的 s 都等于减一。一次 s 同时满足双侧记录，余额依次为 1、0、2。"
+  },
+  "opposite_shared_order": {
+    "base_revision": "A",
+    "base_rows": [],
+    "left": [["s", [["ridge", "06:00", "G", 1]]], ["t", [["ridge", "06:00", "G", 1]]]],
+    "right": [["t", [["ridge", "06:00", "G", 1]]], ["s", [["ridge", "06:00", "G", 1]]]]
+  },
+  "different_shared_delta": {
+    "base_revision": "A",
+    "base_rows": [],
+    "left": [["s", [["ridge", "06:00", "G", 1]]]],
+    "right": [["s", [["ridge", "06:00", "G", 2]]]]
+  }
+}
